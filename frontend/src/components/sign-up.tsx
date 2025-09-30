@@ -17,10 +17,11 @@ import {
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import useLoginCode from "@/hooks/use-login-code";
-import { FaGoogle, FaGithub } from "react-icons/fa";
+import { FaGoogle } from "react-icons/fa";
+import GithubLoginButton from "./github-login-button";
 
 const signUpSchema = z.object({
-	email: z.string().email(),
+	email: z.email(),
 });
 
 type SignUpSchema = z.infer<typeof signUpSchema>;
@@ -44,17 +45,18 @@ export default function SignUp() {
 	};
 
 	const handleGoogleLogin = () => {
-		// Redirect to backend Google OAuth endpoint
-		window.location.href = `${
-			process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api"
-		}/auth/google`;
-	};
+		// Redirect to backend Google OAuth endpoint with return_to parameter
+		const apiUrl =
+			process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+		const googleUrl = `${apiUrl}/auth/google`;
 
-	const handleGitHubLogin = () => {
-		// Redirect to backend GitHub OAuth endpoint
-		window.location.href = `${
-			process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api"
-		}/auth/github`;
+		if (returnTo) {
+			window.location.href = `${googleUrl}?return_to=${encodeURIComponent(
+				returnTo
+			)}`;
+		} else {
+			window.location.href = googleUrl;
+		}
 	};
 
 	return (
@@ -81,15 +83,7 @@ export default function SignUp() {
 							Continue with Google
 						</Button>
 
-						<Button
-							variant="outline"
-							type="button"
-							onClick={handleGitHubLogin}
-							className="w-full h-11 text-base font-medium"
-						>
-							<FaGithub className="mr-2 h-4 w-4" />
-							Continue with GitHub
-						</Button>
+						<GithubLoginButton returnTo={returnTo ?? undefined} />
 					</div>
 
 					<div className="relative">

@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 )
 
@@ -19,31 +18,6 @@ type CodeRequest struct {
 type CodeResponse struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
-}
-
-// validateReturnToURL validates that the return_to URL is safe to redirect to
-// It ensures the URL is a relative path within the application
-func validateReturnToURL(returnTo string) bool {
-	if returnTo == "" {
-		return true // Empty is valid, will use default
-	}
-
-	// Must start with / (relative path)
-	if !strings.HasPrefix(returnTo, "/") {
-		return false
-	}
-
-	// Must not contain protocol or host (no http://, https://, //, etc.)
-	if strings.Contains(returnTo, "://") || strings.HasPrefix(returnTo, "//") {
-		return false
-	}
-
-	// Must not contain query parameters with external URLs
-	if strings.Contains(returnTo, "?") && strings.Contains(returnTo, "http") {
-		return false
-	}
-
-	return true
 }
 
 func (h *Handler) HandleCodeRequest(w http.ResponseWriter, r *http.Request) {
@@ -71,7 +45,7 @@ func (h *Handler) HandleCodeRequest(w http.ResponseWriter, r *http.Request) {
 	loginCode := store.LoginCode{
 		Email:     req.Email,
 		Code:      code,
-		ExpiresAt: time.Now().Add(10 * time.Minute), // 10 minutes expiry
+		ExpiresAt: time.Now().Add(10 * time.Minute),
 	}
 
 	h.store.SetLoginCode(req.Email, loginCode)
@@ -152,17 +126,5 @@ func (h *Handler) HandleVerifyCodeRequest(w http.ResponseWriter, r *http.Request
 
 	util.SetSessionCookie(w, sessionToken)
 
-	// Validate return_to URL to prevent open redirects
-	if !validateReturnToURL(returnTo) {
-		log.Printf("Invalid return_to URL provided: %s", returnTo)
-		returnTo = "/start" // Use default if invalid
-	}
-
-	// Determine redirect destination
-	redirectPath := "/start" // Default
-	if returnTo != "" && validateReturnToURL(returnTo) {
-		redirectPath = returnTo
-	}
-
-	http.Redirect(w, r, fmt.Sprintf("%s%s", frontendUrl, redirectPath), http.StatusSeeOther)
+	http.Redirect(w, r, util.GetFrontendReturnUrl(returnTo), http.StatusSeeOther)
 }

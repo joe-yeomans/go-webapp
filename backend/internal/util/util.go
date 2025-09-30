@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"go-webapp/internal/config"
 )
 
 func GetEnvString(key, defaultValue string) string {
@@ -77,4 +79,39 @@ func ClearSessionCookie(w http.ResponseWriter) {
 		Secure:   isSecure,
 		SameSite: http.SameSiteLaxMode,
 	})
+}
+
+func validateReturnToURL(returnTo string) bool {
+	if returnTo == "" {
+		return true // Empty is valid, will use default
+	}
+
+	// Must start with / (relative path)
+	if !strings.HasPrefix(returnTo, "/") {
+		return false
+	}
+
+	// Must not contain protocol or host (no http://, https://, //, etc.)
+	if strings.Contains(returnTo, "://") || strings.HasPrefix(returnTo, "//") {
+		return false
+	}
+
+	// Must not contain query parameters with external URLs
+	if strings.Contains(returnTo, "?") && strings.Contains(returnTo, "http") {
+		return false
+	}
+
+	return true
+}
+
+func GetFrontendReturnUrl(returnTo string) string {
+	if returnTo == "" {
+		return config.FrontendURL
+	}
+
+	if !validateReturnToURL(returnTo) {
+		return config.FrontendURL
+	}
+
+	return config.FrontendURL + returnTo
 }

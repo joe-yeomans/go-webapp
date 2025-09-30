@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"go-webapp/internal/config"
 	"go-webapp/internal/handler"
 	"go-webapp/internal/store"
 	"go-webapp/internal/util"
@@ -12,87 +12,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/joho/godotenv"
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 )
 
 var (
-	dataStore         *store.Store
-	googleOAuthConfig *oauth2.Config
-	githubOAuthConfig *oauth2.Config
-	oauthStates       = make(map[string]time.Time) // Store OAuth states with expiration
+	dataStore *store.Store
 )
 
-func loadConfig() {
-	// Load .env file
-	if err := godotenv.Load(); err != nil {
-		log.Printf("Warning: Error loading .env file: %v", err)
-	}
-
-	// Initialize session time from environment variable
-	sessionTimeMinutes := util.GetEnvInt("SESSION_TIME_MINUTES", 10)
-	sessionTime := time.Duration(sessionTimeMinutes) * time.Minute
-
-	// Initialize data store with session time
-	dataStore = store.NewStore(sessionTime)
-
-	// Get server configuration
-	port := util.GetEnvString("PORT", "8080")
-	frontendUrl := util.GetEnvString("FRONTEND_URL", "http://localhost:3000")
-	cookieDomain := util.GetEnvString("COOKIE_DOMAIN", "localhost")
-
-	// Google OAuth configuration
-	googleClientId := util.GetEnvString("GOOGLE_CLIENT_ID", "")
-	googleClientSecret := util.GetEnvString("GOOGLE_CLIENT_SECRET", "")
-	googleRedirectUrl := util.GetEnvString("GOOGLE_REDIRECT_URL", fmt.Sprintf("http://localhost:%s/api/auth/google/callback", port))
-
-	if googleClientId != "" && googleClientSecret != "" {
-		googleOAuthConfig = &oauth2.Config{
-			ClientID:     googleClientId,
-			ClientSecret: googleClientSecret,
-			RedirectURL:  googleRedirectUrl,
-			Scopes: []string{
-				"https://www.googleapis.com/auth/userinfo.email",
-				"https://www.googleapis.com/auth/userinfo.profile",
-			},
-			Endpoint: google.Endpoint,
-		}
-		log.Println("Google OAuth configured")
-	} else {
-		log.Println("Warning: Google OAuth not configured - missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET")
-	}
-
-	// GitHub OAuth configuration
-	githubClientId := util.GetEnvString("GITHUB_CLIENT_ID", "")
-	githubClientSecret := util.GetEnvString("GITHUB_CLIENT_SECRET", "")
-	githubRedirectUrl := util.GetEnvString("GITHUB_REDIRECT_URL", fmt.Sprintf("http://localhost:%s/api/auth/github/callback", port))
-
-	if githubClientId != "" && githubClientSecret != "" {
-		githubOAuthConfig = &oauth2.Config{
-			ClientID:     githubClientId,
-			ClientSecret: githubClientSecret,
-			RedirectURL:  githubRedirectUrl,
-			Scopes: []string{
-				"user:email", // Access user email
-			},
-			Endpoint: oauth2.Endpoint{
-				AuthURL:  "https://github.com/login/oauth/authorize",
-				TokenURL: "https://github.com/login/oauth/access_token",
-			},
-		}
-		log.Println("GitHub OAuth configured")
-	} else {
-		log.Println("Warning: GitHub OAuth not configured - missing GITHUB_CLIENT_ID or GITHUB_CLIENT_SECRET")
-	}
-
-	log.Printf("Configuration loaded - Frontend URL: %s, Cookie Domain: %s", frontendUrl, cookieDomain)
-}
-
 func main() {
-	// Load configuration from .env file
-	loadConfig()
-
 	r := chi.NewRouter()
 
 	r.Use(middleware.Logger)
@@ -102,8 +28,8 @@ func main() {
 	// CORS middleware
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Get the frontend URL from environment or default to localhost:3000
-			frontendUrl := util.GetEnvString("FRONTEND_URL", "http://localhost:3000")
+			// Use configured frontend URL
+			frontendUrl := config.FrontendURL
 
 			w.Header().Set("Access-Control-Allow-Origin", frontendUrl)
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
@@ -118,6 +44,12 @@ func main() {
 			next.ServeHTTP(w, r)
 		})
 	})
+
+	// Initialize the data store
+	dataStore = store.NewStore(24 * time.Hour) // 24 hour session duration
+
+	googleOAuthConfig := config.GetGoogleOAuthConfig()
+	githubOAuthConfig := config.GetGitHubOAuthConfig()
 
 	handler := handler.NewHandler(dataStore, googleOAuthConfig, githubOAuthConfig)
 
@@ -144,7 +76,7 @@ func main() {
 		})
 	})
 
-	port := util.GetEnvString("PORT", "8080")
+	port := config.Port
 	log.Printf("Server starting on :%s", port)
 	log.Fatal(http.ListenAndServe(":"+port, r))
 }

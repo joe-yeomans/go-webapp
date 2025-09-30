@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"go-webapp/internal/store"
 	"go-webapp/internal/util"
 	"log"
@@ -29,7 +28,7 @@ func (h *Handler) HandleGoogleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Store state with expiration (10 minutes)
-	h.store.SetOAuthState(state, time.Now().Add(10*time.Minute))
+	h.store.SetOAuthState(state, time.Now().Add(10*time.Minute), r.URL.Query().Get("return_to"))
 
 	url := h.googleOAuthConfig.AuthCodeURL(state, oauth2.AccessTypeOffline)
 
@@ -58,13 +57,13 @@ func (h *Handler) HandleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate state parameter for CSRF protection
-	expiration, exists := h.store.GetOAuthState(state)
+	oauthState, exists := h.store.GetOAuthState(state)
 	if !exists {
 		http.Error(w, "Invalid state parameter", http.StatusBadRequest)
 		return
 	}
 
-	if time.Now().After(expiration) {
+	if time.Now().After(oauthState.ExpiresAt) {
 		h.store.DeleteOAuthState(state) // Clean up expired state
 		http.Error(w, "State parameter has expired", http.StatusBadRequest)
 		return
@@ -125,11 +124,8 @@ func (h *Handler) HandleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 
 	util.SetSessionCookie(w, sessionToken)
 
-	// Redirect to dashboard
-	frontendUrl := util.GetEnvString("FRONTEND_URL", "http://localhost:3000")
-
 	log.Printf("User %s successfully logged in with Google", googleUser.Email)
 
 	// Redirect directly to dashboard since session creation works correctly
-	http.Redirect(w, r, fmt.Sprintf("%s/dashboard", frontendUrl), http.StatusSeeOther)
+	http.Redirect(w, r, util.GetFrontendReturnUrl(oauthState.ReturnTo), http.StatusSeeOther)
 }
