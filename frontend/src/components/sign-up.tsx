@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
 	Form,
 	FormControl,
@@ -26,6 +27,8 @@ type SignUpSchema = z.infer<typeof signUpSchema>;
 
 export default function SignUp() {
 	const [isLoading, setIsLoading] = useState(false);
+	const searchParams = useSearchParams();
+	const returnTo = searchParams.get("return_to");
 	const sendLoginCode = useLoginCode();
 	const form = useForm<SignUpSchema>({
 		resolver: zodResolver(signUpSchema),
@@ -36,18 +39,22 @@ export default function SignUp() {
 
 	const onSubmit = async (data: SignUpSchema) => {
 		setIsLoading(true);
-		await sendLoginCode(data.email);
+		await sendLoginCode(data.email, returnTo);
 		setIsLoading(false);
 	};
 
 	const handleGoogleLogin = () => {
 		// Redirect to backend Google OAuth endpoint
-		window.location.href = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api"}/auth/google`;
+		window.location.href = `${
+			process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api"
+		}/auth/google`;
 	};
 
 	const handleGitHubLogin = () => {
 		// Redirect to backend GitHub OAuth endpoint
-		window.location.href = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api"}/auth/github`;
+		window.location.href = `${
+			process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api"
+		}/auth/github`;
 	};
 
 	return (
@@ -73,7 +80,7 @@ export default function SignUp() {
 							<FaGoogle className="mr-2 h-4 w-4" />
 							Continue with Google
 						</Button>
-						
+
 						<Button
 							variant="outline"
 							type="button"
@@ -84,7 +91,7 @@ export default function SignUp() {
 							Continue with GitHub
 						</Button>
 					</div>
-					
+
 					<div className="relative">
 						<div className="absolute inset-0 flex items-center">
 							<span className="w-full border-t" />
@@ -95,7 +102,7 @@ export default function SignUp() {
 							</span>
 						</div>
 					</div>
-					
+
 					{/* Email form - Secondary option */}
 					<Form {...form}>
 						<form
@@ -128,11 +135,13 @@ export default function SignUp() {
 								variant="secondary"
 								className="w-full h-11 text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed"
 							>
-								{isLoading ? "Sending Code..." : "Send Verification Code"}
+								{isLoading
+									? "Sending Code..."
+									: "Send Verification Code"}
 							</Button>
 						</form>
 					</Form>
-					
+
 					<div className="text-center">
 						<p className="text-xs text-muted-foreground">
 							By signing up, you agree to our Terms of Service and

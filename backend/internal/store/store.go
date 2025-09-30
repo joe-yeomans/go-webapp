@@ -38,6 +38,7 @@ type Store struct {
 	users       storeItem[map[string]User]
 	loginCodes  storeItem[map[string]LoginCode]
 	sessions    storeItem[map[string]Session]
+	oauthStates storeItem[map[string]time.Time]
 	sessionTime time.Duration
 }
 
@@ -46,6 +47,7 @@ func NewStore(sessionTime time.Duration) *Store {
 		users:       storeItem[map[string]User]{Value: make(map[string]User)},
 		loginCodes:  storeItem[map[string]LoginCode]{Value: make(map[string]LoginCode)},
 		sessions:    storeItem[map[string]Session]{Value: make(map[string]Session)},
+		oauthStates: storeItem[map[string]time.Time]{Value: make(map[string]time.Time)},
 		sessionTime: sessionTime,
 	}
 }
@@ -139,4 +141,23 @@ func (s *Store) CleanupExpiredSessions() {
 
 func (s *Store) GetSessionTime() time.Duration {
 	return s.sessionTime
+}
+
+func (s *Store) GetOAuthState(state string) (time.Time, bool) {
+	s.oauthStates.Lock.RLock()
+	defer s.oauthStates.Lock.RUnlock()
+	expiration, ok := s.oauthStates.Value[state]
+	return expiration, ok
+}
+
+func (s *Store) SetOAuthState(state string, expiration time.Time) {
+	s.oauthStates.Lock.Lock()
+	defer s.oauthStates.Lock.Unlock()
+	s.oauthStates.Value[state] = expiration
+}
+
+func (s *Store) DeleteOAuthState(state string) {
+	s.oauthStates.Lock.Lock()
+	defer s.oauthStates.Lock.Unlock()
+	delete(s.oauthStates.Value, state)
 }

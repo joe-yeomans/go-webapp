@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { User } from "./schemas/user";
 import api from "./lib/api";
 
-const protectedRoutes = ["/dashboard"];
+const protectedRoutes = ["/dashboard", "/products"];
 
 const isProtectedRoute = (pathname: string) =>
 	protectedRoutes.some((route) => pathname.startsWith(route));
@@ -12,7 +12,6 @@ export async function middleware(request: NextRequest) {
 	const { pathname } = request.nextUrl;
 
 	const hasSessionCookie = !!request.cookies.get("session")?.value;
-	console.log(request.cookies.get("session"))
 
 	let user: User | null = null;
 	if (hasSessionCookie) {
@@ -31,6 +30,7 @@ export async function middleware(request: NextRequest) {
 	if (isProtectedRoute(pathname) && !user) {
 		const url = request.nextUrl.clone();
 		url.pathname = "/login";
+		url.searchParams.set("return_to", pathname);
 		return NextResponse.redirect(url);
 	}
 
