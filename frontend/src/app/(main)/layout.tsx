@@ -1,6 +1,7 @@
 import { getAuthenticatedUser } from "@/utils/user";
 import Image from "next/image";
 import Link from "next/link";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default async function MainLayout({
 	children,
@@ -60,6 +61,8 @@ export default async function MainLayout({
 								</span>
 							)}
 						</div>
+
+						<ThemeToggle />
 					</div>
 				</div>
 			</header>

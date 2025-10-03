@@ -61,9 +61,9 @@ export default function SignUp() {
 
 	return (
 		<div className="w-full max-w-md mx-auto">
-			<Card className="shadow-lg border-0 bg-card/95 backdrop-blur-sm">
+			<Card className="shadow-lg border-0 backdrop-blur-sm">
 				<CardHeader className="space-y-1 pb-6">
-					<CardTitle className="text-2xl font-semibold text-center text-card-foreground">
+					<CardTitle className="text-2xl font-semibold text-center">
 						Sign Up
 					</CardTitle>
 					<p className="text-sm text-muted-foreground text-center">
@@ -74,7 +74,6 @@ export default function SignUp() {
 					{/* OAuth buttons - Primary options */}
 					<div className="space-y-3">
 						<Button
-							variant="outline"
 							type="button"
 							onClick={handleGoogleLogin}
 							className="w-full h-11 text-base font-medium"
